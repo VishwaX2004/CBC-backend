@@ -64,7 +64,14 @@ export function loginUser(req,res){
                     res.json(
                         {
                             message: "Login successful",
-                            token: token
+                            token: token,
+                            user:{
+                                email: user.email,
+                                firstName: user.firstName,
+                                lastName: user.lastName,
+                                role: user.role,
+                                isEmailVerified: user.isEmailVerified,
+                            }
                         }
                     )
 
