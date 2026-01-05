@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
+import orderRouter from "./routes/orderRouter.js";
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ mongoose
     .catch(() => console.log("Database connection failed"));
 
 /* ROUTES */
+app.use("/api/orders",orderRouter)
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 
