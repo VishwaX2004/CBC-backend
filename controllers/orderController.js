@@ -1,5 +1,6 @@
 import Order from "../models/order.js";
 import Product from "../models/product.js";
+import { isAdmin, isCustomer } from "./userController.js";
 
 export async function createOrder(req, res) {
 
@@ -36,10 +37,10 @@ export async function createOrder(req, res) {
             cusname = user.firstName + " " + user.lastName;
         }
 
-        let phoneNum = req.body.phone;
+        let phone = req.body.phone;
 
-        if (phoneNum == null) {
-            phoneNum = "Not Provided";
+        if (phone == null) {
+            phone = "Not Provided";
         }
 
         const itemsInRequest = req.body.items;
@@ -97,13 +98,22 @@ export async function createOrder(req, res) {
             items: itemtobeAdded,
             customerName: cusname,
             email: user.email,
-            phone: phoneNum,
+            phone: phone,
             address: req.body.address,
             total: total,
             status: "Pending"
         });
 
         const savedOrder = await newOrder.save();
+
+        for (let i = 0; i < itemtobeAdded; i++) {
+            const item = itemtobeAdded[i]
+
+            await Product.updateOne(
+                { productID: item.productID },
+                { $inc: { stock: -item.quantity } }
+            )
+        }
 
         res.status(201).json({
             message: "Order created successfully",
@@ -116,4 +126,62 @@ export async function createOrder(req, res) {
             message: "Server Error"
         });
     }
+}
+
+export async function GetOrders(req, res) {
+
+    if (isAdmin(req)) {
+        const orders = await Order.find().sort({ date: -1 })
+        res.json(orders)
+
+    } else if (isCustomer(req)) {
+        const user = req.user
+        const orders = await Order.find({ email: user.email }).sort({ date: -1 })
+        res.json(orders)
+
+    } else {
+        return res.status(401).json(
+            {
+                message: "Unauthorized User"
+            }
+        )
+    }
+
+}
+
+
+export async function UpdateOrderStatus(req,res) {
+
+    if(!isAdmin(req)){
+         res.status(403).json(
+            {
+                message: "You are not Authorized to change Status"
+            }
+        )
+        return
+    }
+
+    const orderID = req.params.orderID
+    const newstatus = req.body.status
+
+    try{
+        
+    await Order.updateOne(
+        {orderID : orderID},
+        {status : newstatus}
+    )
+
+    res.json({
+        message : "Order Status Updated Successfully"
+    })
+
+
+    }catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Failed to update Status"
+        })
+        return
+    }
+    
 }
