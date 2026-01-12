@@ -31,10 +31,10 @@ export async function createOrder(req, res) {
             newOrderID = "CBC" + newOrderNumber.toString().padStart(7, "0");
         }
 
-        let cusname = req.body.customerName;
+        let customerName = req.body.customerName;
 
-        if (cusname == null) {
-            cusname = user.firstName + " " + user.lastName;
+        if (customerName == null) {
+            customerName = user.firstName + " " + user.lastName;
         }
 
         let phone = req.body.phone;
@@ -96,7 +96,7 @@ export async function createOrder(req, res) {
         const newOrder = new Order({
             orderID: newOrderID,
             items: itemtobeAdded,
-            customerName: cusname,
+            customerName:customerName,
             email: user.email,
             phone: phone,
             address: req.body.address,
