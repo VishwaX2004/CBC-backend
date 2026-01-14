@@ -1,5 +1,5 @@
 import express from 'express';
-import { BlockOrUnblockUser, createUser, GetallUsers, GetUsers, GoogLogin, loginUser } from '../controllers/userController.js';
+import { BlockOrUnblockUser, ChangePasswordViaOTP, createUser, GetallUsers, GetUsers, GoogLogin, loginUser, SendOTP } from '../controllers/userController.js';
 
 const userRouter = express.Router();
 
@@ -9,5 +9,8 @@ userRouter.get("/me",GetUsers)
 userRouter.post("/google-login",GoogLogin)
 userRouter.get("/all-users",GetallUsers)
 userRouter.put("/block/:email",BlockOrUnblockUser)
+userRouter.get("/send-otp/:email", SendOTP);
+userRouter.post("/reset-password", ChangePasswordViaOTP);
+
 
 export default userRouter;
