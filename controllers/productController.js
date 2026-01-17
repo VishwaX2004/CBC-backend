@@ -102,23 +102,27 @@ export async function updateProduct(req, res) {
     }
 }
 
-// GET PRODUCT BY productID
+/* =========================
+   GET PRODUCT BY ID
+========================= */
 export async function getProductId(req, res) {
-  try {
-    const { productID } = req.params;
-    const product = await Product.findOne({ productID }); // find by productID string
+    try {
+        const productID = req.params.productID;
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+        const product = await Product.findById(productID);
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        res.json(product);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Failed to retrieve product by ID"
+        });
     }
-
-    res.json(product);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to retrieve product by ID" });
-  }
 }
-
 
 /* =========================
    SEARCH PRODUCTS
