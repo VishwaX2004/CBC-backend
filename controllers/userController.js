@@ -8,6 +8,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+/* =========================
+   MAIL CONFIG
+========================= */
 const transporter = nodemailer.createTransport({
     service: "Gmail",
     host: "smtp.gmail.com",
@@ -47,7 +50,7 @@ export function createUser(req, res) {
 export function loginUser(req, res) {
     User.findOne({ email: req.body.email })
         .then((user) => {
-            if (user == null) {
+            if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }
 
@@ -66,27 +69,26 @@ export function loginUser(req, res) {
                 return res.status(401).json({ message: "Invalid password" });
             }
 
+            // ✅ JWT SHOULD ONLY CONTAIN IDENTITY DATA
             const token = jwt.sign(
                 {
                     email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
                     role: user.role,
-                    isEmailVerified: user.isEmailVerified,
-                    image: user.image
+                    isEmailVerified: user.isEmailVerified
                 },
                 process.env.JWT_SECRET
             );
 
             res.json({
                 message: "Login successful",
-                token: token,
+                token,
                 user: {
                     email: user.email,
                     firstName: user.firstName,
                     lastName: user.lastName,
                     role: user.role,
-                    isEmailVerified: user.isEmailVerified
+                    isEmailVerified: user.isEmailVerified,
+                    image: user.image
                 }
             });
         })
@@ -99,25 +101,38 @@ export function loginUser(req, res) {
    ROLE CHECKS
 ========================= */
 export function isAdmin(req) {
-    if (req.user == null) return false;
-    if (req.user.role !== "admin") return false;
-    return true;
+    return req.user && req.user.role === "admin";
 }
 
 export function isCustomer(req) {
-    if (req.user == null) return false;
-    if (req.user.role !== "user") return false;
-    return true;
+    return req.user && req.user.role === "user";
 }
 
 /* =========================
-   GET LOGGED USER
+   GET LOGGED USER (FIXED)
 ========================= */
-export function GetUsers(req, res) {
-    if (req.user == null) {
+export async function GetUsers(req, res) {
+    if (!req.user?.email) {
         return res.status(401).json({ message: "Unauthorized User" });
     }
-    res.json(req.user);
+
+    try {
+        const user = await User.findOne({ email: req.user.email }).select(
+            "-password"
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(user);
+
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed to fetch user",
+            error: err.message
+        });
+    }
 }
 
 /* =========================
@@ -133,26 +148,24 @@ export async function GoogLogin(req, res) {
     try {
         const googleResponse = await axios.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
-            {
-                headers: { Authorization: `Bearer ${token}` }
-            }
+            { headers: { Authorization: `Bearer ${token}` } }
         );
 
         const googleUser = googleResponse.data;
 
         let user = await User.findOne({ email: googleUser.email });
 
-        if (user == null) {
+        if (!user) {
             user = new User({
                 email: googleUser.email,
                 firstName: googleUser.given_name,
                 lastName: googleUser.family_name,
-                password: "abc1234",
+                password: bcrypt.hashSync("google-auth", 10),
                 isEmailVerified: googleUser.email_verified,
                 image: googleUser.picture
             });
 
-            user = await user.save();
+            await user.save();
         }
 
         if (user.isBlock) {
@@ -164,11 +177,8 @@ export async function GoogLogin(req, res) {
         const jwtToken = jwt.sign(
             {
                 email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
                 role: user.role,
-                isEmailVerified: user.isEmailVerified,
-                image: user.image
+                isEmailVerified: user.isEmailVerified
             },
             process.env.JWT_SECRET
         );
@@ -203,7 +213,7 @@ export async function GetallUsers(req, res) {
     }
 
     try {
-        const users = await User.find();
+        const users = await User.find().select("-password");
         res.json(users);
     } catch (err) {
         res.status(500).json({
@@ -223,7 +233,7 @@ export async function BlockOrUnblockUser(req, res) {
 
     if (req.params.email === req.user.email) {
         return res.status(400).json({
-            message: "You Cannot Block Yourself"
+            message: "You cannot block yourself"
         });
     }
 
@@ -233,144 +243,37 @@ export async function BlockOrUnblockUser(req, res) {
             { isBlock: req.body.isBlock }
         );
 
-        res.json({
-            message: "User status updated successfully"
-        });
+        res.json({ message: "User status updated successfully" });
     } catch (err) {
         res.status(500).json({
-            message: "Failed to Block/Unblock User",
+            message: "Failed to update user",
             error: err.message
         });
     }
 }
 
-
+/* =========================
+   SEND OTP
+========================= */
 export async function SendOTP(req, res) {
     const email = req.params.email;
-
-    if (email == null) {
-        return res.status(400).json({
-            message: "Email is required"
-        });
-    }
+    if (!email) return res.status(400).json({ message: "Email required" });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
         await OTP.deleteMany({ email });
-
-        const newOTP = new OTP({ email, otp });
-        await newOTP.save();
+        await OTP.create({ email, otp });
 
         await transporter.sendMail({
             from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Your One-Time Password (OTP)",
-            html: `
-    <div style="
-        background-color:#F6F1E9;
-        padding:40px 0;
-        font-family: 'Segoe UI', Arial, sans-serif;
-        color:#333446;
-    ">
-        <div style="
-            max-width:520px;
-            margin:0 auto;
-            background:#ffffff;
-            border-radius:16px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.08);
-            overflow:hidden;
-        ">
-
-            <!-- Header -->
-            <div style="
-                background:linear-gradient(135deg, #FF9A00, #FFD93D);
-                padding:24px;
-                text-align:center;
-                color:#ffffff;
-            ">
-                <h1 style="
-                    margin:0;
-                    font-size:24px;
-                    font-weight:600;
-                ">
-                    Password Reset
-                </h1>
-            </div>
-
-            <!-- Body -->
-            <div style="padding:32px;">
-                <p style="
-                    font-size:15px;
-                    line-height:1.6;
-                    margin-bottom:20px;
-                ">
-                    Hello,
-                </p>
-
-                <p style="
-                    font-size:15px;
-                    line-height:1.6;
-                    margin-bottom:24px;
-                ">
-                    We received a request to reset your password.  
-                    Please use the following One-Time Password (OTP) to continue:
-                </p>
-
-                <!-- OTP Box -->
-                <div style="
-                    background:#F6F1E9;
-                    border:2px dashed #FF9A00;
-                    border-radius:12px;
-                    padding:16px;
-                    text-align:center;
-                    margin-bottom:24px;
-                ">
-                    <span style="
-                        font-size:28px;
-                        font-weight:700;
-                        letter-spacing:6px;
-                        color:#333446;
-                    ">
-                        ${otp}
-                    </span>
-                </div>
-
-                <p style="
-                    font-size:14px;
-                    color:#555;
-                    margin-bottom:20px;
-                ">
-                    ⏳ This OTP is valid for <strong>5 minutes</strong>.  
-                    Please do not share it with anyone.
-                </p>
-
-                <p style="
-                    font-size:14px;
-                    color:#777;
-                    margin-bottom:0;
-                ">
-                    If you did not request a password reset, you can safely ignore this email.
-                </p>
-            </div>
-
-            <!-- Footer -->
-            <div style="
-                background:#F6F1E9;
-                padding:16px;
-                text-align:center;
-                font-size:12px;
-                color:#777;
-            ">
-                © ${new Date().getFullYear()} Crystal Beauty Clear. All rights reserved.
-            </div>
-
-        </div>
-    </div>
-    `
+            subject: "Your OTP",
+            html: `<h2>Your OTP is ${otp}</h2>`
         });
 
         res.json({ message: "OTP sent successfully" });
+
     } catch (err) {
         res.status(500).json({
             message: "Failed to send OTP",
@@ -379,38 +282,26 @@ export async function SendOTP(req, res) {
     }
 }
 
-
+/* =========================
+   CHANGE PASSWORD VIA OTP
+========================= */
 export async function ChangePasswordViaOTP(req, res) {
     const { email, otp, newPassword } = req.body;
 
     if (!email || !otp || !newPassword) {
-        return res.status(400).json({
-            message: "All fields are required"
-        });
+        return res.status(400).json({ message: "All fields required" });
     }
 
     try {
-        const otpRecord = await OTP.findOne({
-            email: email.trim(),
-            otp: otp.trim()
-        });
-
-        if (!otpRecord) {
-            return res.status(400).json({
-                message: "Invalid or expired OTP"
-            });
+        const record = await OTP.findOne({ email, otp });
+        if (!record) {
+            return res.status(400).json({ message: "Invalid OTP" });
         }
 
-        const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
-        const result = await User.updateOne(
-            { email: email.trim() },
-            { password: hashedPassword }
+        await User.updateOne(
+            { email },
+            { password: bcrypt.hashSync(newPassword, 10) }
         );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ message: "User not found" });
-        }
 
         await OTP.deleteMany({ email });
 
@@ -424,48 +315,54 @@ export async function ChangePasswordViaOTP(req, res) {
     }
 }
 
+/* =========================
+   UPDATE USER DATA
+========================= */
 export async function updateUserData(req, res) {
-    if (req.user == null) {
+    if (!req.user?.email) {
         return res.status(401).json({ message: "Unauthorized User" });
     }
 
     try {
-
-        await User.updateOne({ email: req.user.email }, {
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            image: req.body.image
-        });
+        await User.updateOne(
+            { email: req.user.email },
+            {
+                firstName: req.body.firstName,
+                lastName: req.body.lastName,
+                image: req.body.image
+            }
+        );
 
         res.json({ message: "User data updated successfully" });
 
-    }catch (err) {
+    } catch (err) {
         res.status(500).json({
-            message: "Failed to update user data",
+            message: "Failed to update user",
             error: err.message
         });
     }
 }
 
+/* =========================
+   CHANGE PASSWORD (LOGGED USER)
+========================= */
 export async function changePassword(req, res) {
-    if (req.user == null) {
+    if (!req.user?.email) {
         return res.status(401).json({ message: "Unauthorized User" });
-   }
+    }
 
-   try{
-        const hashedPassword = bcrypt.hashSync(req.body.Password, 10);
+    try {
+        await User.updateOne(
+            { email: req.user.email },
+            { password: bcrypt.hashSync(req.body.password, 10) }
+        );
 
-        await User.updateOne({ email: req.user.email }, {
-            password: hashedPassword
-        });
         res.json({ message: "Password changed successfully" });
-      
 
-   }catch (err) {
-       res.status(500).json({
-           message: "Failed to change password",
-           error: err.message
-       });
-   }
-
-}    
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed to change password",
+            error: err.message
+        });
+    }
+}
