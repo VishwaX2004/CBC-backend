@@ -1,148 +1,88 @@
 import Product from "../models/product.js";
 import { isAdmin } from "./userController.js";
 
-/* =========================
-   CREATE PRODUCT
-========================= */
+/* CREATE PRODUCT */
 export async function createProduct(req, res) {
-    if (!isAdmin(req)) {
-        return res.status(403).json({
-            message: "You are not authorized to create a product"
-        });
-    }
+    if (!isAdmin(req)) return res.status(403).json({ message: "Not authorized" });
 
     try {
-        const productData = req.body;
-
-        const product = new Product(productData);
+        const product = new Product(req.body);
         await product.save();
-
-        res.json({
-            message: "Product created successfully",
-            product
-        });
+        res.json({ message: "Product created successfully", product });
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to create product"
-        });
+        res.status(500).json({ message: "Failed to create product" });
     }
 }
 
-/* =========================
-   GET ALL PRODUCTS
-========================= */
+/* GET ALL PRODUCTS */
 export async function getProducts(req, res) {
     try {
         const products = await Product.find();
         res.json(products);
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to retrieve products"
-        });
+        res.status(500).json({ message: "Failed to retrieve products" });
     }
 }
 
-/* =========================
-   DELETE PRODUCT
-========================= */
+/* DELETE PRODUCT */
 export async function deleteProduct(req, res) {
-    if (!isAdmin(req)) {
-        return res.status(403).json({
-            message: "You are not authorized to delete a product"
-        });
-    }
+    if (!isAdmin(req)) return res.status(403).json({ message: "Not authorized" });
 
     try {
-        const productID = req.params.productID;
-
-        // Use _id if you are using Mongo default ObjectId
-        const result = await Product.deleteOne({ productID : productID });
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ message: "Product not found" });
-        }
-
+        const { productID } = req.params;
+        const result = await Product.deleteOne({ productID });
+        if (result.deletedCount === 0) return res.status(404).json({ message: "Product not found" });
         res.json({ message: "Product deleted successfully" });
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to delete product"
-        });
+        res.status(500).json({ message: "Failed to delete product" });
     }
 }
 
-/* =========================
-   UPDATE PRODUCT
-========================= */
+/* UPDATE PRODUCT */
 export async function updateProduct(req, res) {
-    if (!isAdmin(req)) {
-        return res.status(403).json({
-            message: "You are not authorized to update a product"
-        });
-    }
+    if (!isAdmin(req)) return res.status(403).json({ message: "Not authorized" });
 
     try {
-        const productID = req.params.productID;
+        const { productID } = req.params;
         const updatedData = req.body;
-
-        const result = await Product.updateOne({ _id: productID }, updatedData);
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ message: "Product not found" });
-        }
-
+        const result = await Product.updateOne({ productID }, updatedData);
+        if (result.matchedCount === 0) return res.status(404).json({ message: "Product not found" });
         res.json({ message: "Product updated successfully" });
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to update product"
-        });
+        res.status(500).json({ message: "Failed to update product" });
     }
 }
 
-/* =========================
-   GET PRODUCT BY ID
-========================= */
+/* GET PRODUCT BY productID */
 export async function getProductId(req, res) {
     try {
-        const productID = req.params.productID;
-
-        const product = await Product.findById(productID);
-
-        if (!product) {
-            return res.status(404).json({ message: "Product not found" });
-        }
-
+        const { productID } = req.params;
+        const product = await Product.findOne({ productID });
+        if (!product) return res.status(404).json({ message: "Product not found" });
         res.json(product);
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to retrieve product by ID"
-        });
+        res.status(500).json({ message: "Failed to retrieve product by ID" });
     }
 }
 
-/* =========================
-   SEARCH PRODUCTS
-========================= */
+/* SEARCH PRODUCTS */
 export async function getProductsBySearch(req, res) {
     try {
         const query = req.query.query || "";
-
         const products = await Product.find({
             $or: [
                 { name: { $regex: query, $options: "i" } },
                 { altNames: { $regex: query, $options: "i" } }
             ]
         });
-
         res.json(products);
     } catch (err) {
         console.error(err);
-        res.status(500).json({
-            message: "Failed to search products"
-        });
+        res.status(500).json({ message: "Failed to search products" });
     }
 }
