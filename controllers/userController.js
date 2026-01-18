@@ -266,11 +266,113 @@ export async function SendOTP(req, res) {
         await OTP.create({ email, otp });
 
         await transporter.sendMail({
-            from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
+            from: `"Your Company Name" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Your OTP",
-            html: `<h2>Your OTP is ${otp}</h2>`
+            subject: "Your One-Time Password (OTP)",
+            html: `
+    <div style="
+        background-color:#F6F1E9;
+        padding:40px 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color:#333446;
+    ">
+        <div style="
+            max-width:520px;
+            margin:0 auto;
+            background:#ffffff;
+            border-radius:16px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.08);
+            overflow:hidden;
+        ">
+
+            <!-- Header -->
+            <div style="
+                background:linear-gradient(135deg, #FF9A00, #FFD93D);
+                padding:24px;
+                text-align:center;
+                color:#ffffff;
+            ">
+                <h1 style="
+                    margin:0;
+                    font-size:24px;
+                    font-weight:600;
+                ">
+                    Password Reset
+                </h1>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:32px;">
+                <p style="
+                    font-size:15px;
+                    line-height:1.6;
+                    margin-bottom:20px;
+                ">
+                    Hello,
+                </p>
+
+                <p style="
+                    font-size:15px;
+                    line-height:1.6;
+                    margin-bottom:24px;
+                ">
+                    We received a request to reset your password.  
+                    Please use the following One-Time Password (OTP) to continue:
+                </p>
+
+                <!-- OTP Box -->
+                <div style="
+                    background:#F6F1E9;
+                    border:2px dashed #FF9A00;
+                    border-radius:12px;
+                    padding:16px;
+                    text-align:center;
+                    margin-bottom:24px;
+                ">
+                    <span style="
+                        font-size:28px;
+                        font-weight:700;
+                        letter-spacing:6px;
+                        color:#333446;
+                    ">
+                        ${otp}
+                    </span>
+                </div>
+
+                <p style="
+                    font-size:14px;
+                    color:#555;
+                    margin-bottom:20px;
+                ">
+                    ⏳ This OTP is valid for <strong>5 minutes</strong>.  
+                    Please do not share it with anyone.
+                </p>
+
+                <p style="
+                    font-size:14px;
+                    color:#777;
+                    margin-bottom:0;
+                ">
+                    If you did not request a password reset, you can safely ignore this email.
+                </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="
+                background:#F6F1E9;
+                padding:16px;
+                text-align:center;
+                font-size:12px;
+                color:#777;
+            ">
+                © ${new Date().getFullYear()} Your Company Name. All rights reserved.
+            </div>
+
+        </div>
+    </div>
+    `
         });
+
 
         res.json({ message: "OTP sent successfully" });
 
