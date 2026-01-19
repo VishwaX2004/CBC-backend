@@ -1,29 +1,25 @@
-import nodemailer from "nodemailer";
 
 // =====================
 // SEND CONTACT MESSAGE
+
+import transporter from "../utils/mailer.js";
+
+
+
+
 // =====================
 export const sendContactMessage = async (req, res) => {
   try {
-    // user already verified by middleware
     if (!req.user?.email) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userEmail = req.user.email;
     const { name, message } = req.body;
+    const userEmail = req.user.email;
 
     if (!name || !message) {
       return res.status(400).json({ message: "Name and message are required" });
     }
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
 
     await transporter.sendMail({
       from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,

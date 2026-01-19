@@ -2,14 +2,14 @@ import axios from "axios";
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import OTP from "../models/otpModel.js";
 import dotenv from "dotenv";
+import nodemailer from "nodemailer";
 
 dotenv.config();
 
 /* =========================
-   MAIL CONFIG
+   MAIL CONFIG (FIXED)
 ========================= */
 const transporter = nodemailer.createTransport({
     service: "Gmail",
@@ -32,7 +32,8 @@ export function createUser(req, res) {
         email: req.body.email,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
-        password: hashedPassword
+        password: hashedPassword,
+        provider: "local"
     });
 
     user.save()
@@ -60,6 +61,12 @@ export function loginUser(req, res) {
                 });
             }
 
+            if (!user.password) {
+                return res.status(401).json({
+                    message: "Please login using Google"
+                });
+            }
+
             const isPasswordMatching = bcrypt.compareSync(
                 req.body.password,
                 user.password
@@ -69,14 +76,15 @@ export function loginUser(req, res) {
                 return res.status(401).json({ message: "Invalid password" });
             }
 
-            // ✅ JWT SHOULD ONLY CONTAIN IDENTITY DATA
             const token = jwt.sign(
                 {
+                    id: user._id,
                     email: user.email,
                     role: user.role,
                     isEmailVerified: user.isEmailVerified
                 },
-                process.env.JWT_SECRET
+                process.env.JWT_SECRET,
+                { expiresIn: "7d" }
             );
 
             res.json({
@@ -109,7 +117,7 @@ export function isCustomer(req) {
 }
 
 /* =========================
-   GET LOGGED USER (FIXED)
+   GET LOGGED USER
 ========================= */
 export async function GetUsers(req, res) {
     if (!req.user?.email) {
@@ -117,16 +125,13 @@ export async function GetUsers(req, res) {
     }
 
     try {
-        const user = await User.findOne({ email: req.user.email }).select(
-            "-password"
-        );
+        const user = await User.findOne({ email: req.user.email }).select("-password");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
         res.json(user);
-
     } catch (err) {
         res.status(500).json({
             message: "Failed to fetch user",
@@ -136,7 +141,7 @@ export async function GetUsers(req, res) {
 }
 
 /* =========================
-   GOOGLE LOGIN
+   GOOGLE LOGIN (FIXED IMAGE ISSUE)
 ========================= */
 export async function GoogLogin(req, res) {
     const token = req.body.token;
@@ -160,12 +165,19 @@ export async function GoogLogin(req, res) {
                 email: googleUser.email,
                 firstName: googleUser.given_name,
                 lastName: googleUser.family_name,
-                password: bcrypt.hashSync("google-auth", 10),
+                password: null,
                 isEmailVerified: googleUser.email_verified,
-                image: googleUser.picture
+                image: googleUser.picture,
+                provider: "google"
             });
 
             await user.save();
+        } else {
+            // ✅ FIX: update image if missing
+            if (!user.image && googleUser.picture) {
+                user.image = googleUser.picture;
+                await user.save();
+            }
         }
 
         if (user.isBlock) {
@@ -176,11 +188,13 @@ export async function GoogLogin(req, res) {
 
         const jwtToken = jwt.sign(
             {
+                id: user._id,
                 email: user.email,
                 role: user.role,
                 isEmailVerified: user.isEmailVerified
             },
-            process.env.JWT_SECRET
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
         );
 
         res.json({
@@ -269,113 +283,10 @@ export async function SendOTP(req, res) {
             from: `"Your Company Name" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Your One-Time Password (OTP)",
-            html: `
-    <div style="
-        background-color:#F6F1E9;
-        padding:40px 0;
-        font-family: 'Segoe UI', Arial, sans-serif;
-        color:#333446;
-    ">
-        <div style="
-            max-width:520px;
-            margin:0 auto;
-            background:#ffffff;
-            border-radius:16px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.08);
-            overflow:hidden;
-        ">
-
-            <!-- Header -->
-            <div style="
-                background:linear-gradient(135deg, #FF9A00, #FFD93D);
-                padding:24px;
-                text-align:center;
-                color:#ffffff;
-            ">
-                <h1 style="
-                    margin:0;
-                    font-size:24px;
-                    font-weight:600;
-                ">
-                    Password Reset
-                </h1>
-            </div>
-
-            <!-- Body -->
-            <div style="padding:32px;">
-                <p style="
-                    font-size:15px;
-                    line-height:1.6;
-                    margin-bottom:20px;
-                ">
-                    Hello,
-                </p>
-
-                <p style="
-                    font-size:15px;
-                    line-height:1.6;
-                    margin-bottom:24px;
-                ">
-                    We received a request to reset your password.  
-                    Please use the following One-Time Password (OTP) to continue:
-                </p>
-
-                <!-- OTP Box -->
-                <div style="
-                    background:#F6F1E9;
-                    border:2px dashed #FF9A00;
-                    border-radius:12px;
-                    padding:16px;
-                    text-align:center;
-                    margin-bottom:24px;
-                ">
-                    <span style="
-                        font-size:28px;
-                        font-weight:700;
-                        letter-spacing:6px;
-                        color:#333446;
-                    ">
-                        ${otp}
-                    </span>
-                </div>
-
-                <p style="
-                    font-size:14px;
-                    color:#555;
-                    margin-bottom:20px;
-                ">
-                    ⏳ This OTP is valid for <strong>5 minutes</strong>.  
-                    Please do not share it with anyone.
-                </p>
-
-                <p style="
-                    font-size:14px;
-                    color:#777;
-                    margin-bottom:0;
-                ">
-                    If you did not request a password reset, you can safely ignore this email.
-                </p>
-            </div>
-
-            <!-- Footer -->
-            <div style="
-                background:#F6F1E9;
-                padding:16px;
-                text-align:center;
-                font-size:12px;
-                color:#777;
-            ">
-                © ${new Date().getFullYear()} Your Company Name. All rights reserved.
-            </div>
-
-        </div>
-    </div>
-    `
+            html: `<h2>Your OTP is: ${otp}</h2>`
         });
 
-
         res.json({ message: "OTP sent successfully" });
-
     } catch (err) {
         res.status(500).json({
             message: "Failed to send OTP",
@@ -408,7 +319,6 @@ export async function ChangePasswordViaOTP(req, res) {
         await OTP.deleteMany({ email });
 
         res.json({ message: "Password changed successfully" });
-
     } catch (err) {
         res.status(500).json({
             message: "Failed to change password",
@@ -436,7 +346,6 @@ export async function updateUserData(req, res) {
         );
 
         res.json({ message: "User data updated successfully" });
-
     } catch (err) {
         res.status(500).json({
             message: "Failed to update user",
@@ -460,7 +369,6 @@ export async function changePassword(req, res) {
         );
 
         res.json({ message: "Password changed successfully" });
-
     } catch (err) {
         res.status(500).json({
             message: "Failed to change password",
