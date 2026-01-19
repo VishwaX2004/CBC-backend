@@ -6,6 +6,7 @@ import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
 import orderRouter from "./routes/orderRouter.js";
+import contactrouter from "./routes/contactRouter.js";
 
 dotenv.config();
 
@@ -47,6 +48,8 @@ mongoose
 app.use("/api/orders",orderRouter)
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
+app.use("/api/contact", contactrouter);
+
 
 /* SERVER */
 app.listen(5000, () => {
