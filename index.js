@@ -1,49 +1,57 @@
 import express from "express";
 import mongoose from "mongoose";
+import userRouter from "./routes/userRouter.js";
 import jwt from "jsonwebtoken";
+import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
-
-import userRouter from "./routes/userRouter.js";
-import productRouter from "./routes/productRouter.js";
 import orderRouter from "./routes/orderRouter.js";
-import Contactrouter from "./routes/contactRouter.js";
+import contactrouter from "./routes/contactRouter.js";
 
 dotenv.config();
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-// ================= JWT MIDDLEWARE =================
+/* ✅ FIXED AUTH MIDDLEWARE */
 app.use((req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth) return next();
+    let token = req.header("Authorization");
 
-  const token = auth.split(" ")[1];
-  if (!token) return next();
+    if (!token) {
+        next(); // public route
+        return;
+    }
 
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ message: "Invalid token" });
-  }
+    token = token.replace("Bearer ", "");
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err || !decoded) {
+            return res.status(401).json({
+                message: "Invalid token please login again",
+            });
+        }
+
+        req.user = decoded;
+        next(); // ✅ only called once
+    });
 });
 
-// ================= DATABASE =================
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("Database connected"))
-  .catch(err => console.error(err));
+/* DATABASE */
+mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("Database connected"))
+    .catch(() => console.log("Database connection failed"));
 
-// ================= ROUTES =================
+/* ROUTES */
+app.use("/api/orders",orderRouter)
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
-app.use("/api/orders", orderRouter);
-app.use("/api/contact", Contactrouter);
+app.use("/api/contact", contactrouter);
 
-// ================= SERVER =================
+
+/* SERVER */
 app.listen(5000, () => {
-  console.log("Server running on port 5000");
+    console.log("Server is running on port 5000");
 });
