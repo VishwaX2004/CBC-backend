@@ -26,7 +26,7 @@ export const sendContactMessage = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"Website Contact" <${process.env.EMAIL_USER}>`,
+      from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
       replyTo: userEmail,
       subject: `New Contact Message from ${name}`,
