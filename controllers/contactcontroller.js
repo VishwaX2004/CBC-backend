@@ -1,13 +1,8 @@
+import transporter from "./mailer.js";
 
-// =====================
-// SEND CONTACT MESSAGE
-
-import transporter from "../utils/mailer.js";
-
-
-
-
-// =====================
+/* =====================
+   SEND CONTACT MESSAGE
+===================== */
 export const sendContactMessage = async (req, res) => {
   try {
     if (!req.user?.email) {
@@ -17,20 +12,25 @@ export const sendContactMessage = async (req, res) => {
     const { name, message } = req.body;
     const userEmail = req.user.email;
 
-    if (!name || !message) {
-      return res.status(400).json({ message: "Name and message are required" });
+    if (!name?.trim() || !message?.trim()) {
+      return res.status(400).json({
+        message: "Name and message are required",
+      });
     }
 
     await transporter.sendMail({
       from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER, // Admin inbox
       replyTo: userEmail,
       subject: `New Contact Message from ${name}`,
       html: `
-        <h2>New Contact Message</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${userEmail}</p>
-        <p>${message}</p>
+        <div style="font-family:Arial,sans-serif; line-height:1.6">
+          <h2>📩 New Contact Message</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${userEmail}</p>
+          <hr />
+          <p>${message.replace(/\n/g, "<br/>")}</p>
+        </div>
       `,
     });
 
