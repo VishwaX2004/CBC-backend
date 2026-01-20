@@ -1,8 +1,12 @@
 import express from "express";
 import { sendContactMessage } from "../controllers/contactcontroller.js";
 
-const Contactrouter = express.Router();
 
-Contactrouter.post("/", sendContactMessage);
+const contactRouter = express.Router();
 
-export default Contactrouter;
+// ===============================
+// POST /api/contact
+// ===============================
+contactRouter.post("/", sendContactMessage);
+
+export default contactRouter;
