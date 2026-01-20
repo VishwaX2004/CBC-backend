@@ -44,6 +44,12 @@ mongoose
     .then(() => console.log("Database connected"))
     .catch(() => console.log("Database connection failed"));
 
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  next();
+});
+
 /* ROUTES */
 app.use("/api/orders",orderRouter)
 app.use("/api/users", userRouter);
