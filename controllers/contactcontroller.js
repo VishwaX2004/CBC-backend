@@ -1,36 +1,25 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendContactMessage = async (req, res) => {
   try {
-    // ✅ Ensure user is logged in with email
     if (!req.user?.email) {
       return res
         .status(401)
         .json({ message: "Login with email to send contact message" });
     }
 
-    const userEmail = req.user.email; // ✅ FIX
     const { name, message } = req.body;
+    const userEmail = req.user.email;
 
     if (!name || !message) {
       return res.status(400).json({ message: "Name and message are required" });
     }
 
-    // ✅ Gmail transporter (clean & stable)
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
-
-    // (Optional) Verify connection
-    await transporter.verify();
-
-    await transporter.sendMail({
-      from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
+    await resend.emails.send({
+     from: "Crystal Beauty Clear <onboarding@resend.dev>",
+      to: [process.env.EMAIL_USER],
       replyTo: userEmail,
       subject: `📩 Contact Message from ${name}`,
       html: `
