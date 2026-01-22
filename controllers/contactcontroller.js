@@ -3,26 +3,8 @@ import jwt from "jsonwebtoken";
 
 export const sendContactMessage = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Unauthorized: No token provided" });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch {
-      return res.status(401).json({ message: "Invalid or expired token" });
-    }
-
-    const userEmail = decoded.email;
-
-    if (!userEmail) {
-      return res.status(400).json({ message: "User email missing in token" });
-    }
+    const token = req.body.token;
+    if (!token) return res.status(401).json({ message: "Unauthorized User" });
 
     const { name, message } = req.body;
 
