@@ -8,23 +8,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-/* =========================
-   MAIL CONFIG (RENDER SAFE)
-========================= */
+
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,          // ✅ Use TLS port 587 (works on Render)
-  secure: false,      // TLS, not SSL
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.APP_PASSWORD
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000
+	service: "gmail",
+	host: "smtp.gmail.com",
+	port: 587,
+	secure: false,
+	auth: {
+		user: process.env.EMAIL_USER,
+		pass: process.env.APP_PASSWORD,
+	},
 });
 
 /* =========================

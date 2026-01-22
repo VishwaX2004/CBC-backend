@@ -3,9 +3,6 @@ import jwt from "jsonwebtoken";
 
 export const sendContactMessage = async (req, res) => {
   try {
-    // ===============================
-    // Authorization
-    // ===============================
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -27,37 +24,27 @@ export const sendContactMessage = async (req, res) => {
       return res.status(400).json({ message: "User email missing in token" });
     }
 
-    // ===============================
-    // Validate request
-    // ===============================
     const { name, message } = req.body;
 
     if (!name || !message) {
       return res.status(400).json({ message: "Name and message are required" });
     }
 
-    // ===============================
-    // Nodemailer Transport
-    // ===============================
     const transporter = nodemailer.createTransport({
+      service: "gmail",
       host: "smtp.gmail.com",
       port: 587,
       secure: false,
       auth: {
-        user: process.env.EMAIL_USER, // vishwapramuditha505@gmail.com
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
+        user: process.env.EMAIL_USER,
+        pass: process.env.APP_PASSWORD,
       },
     });
 
-    // ===============================
-    // Email
-    // ===============================
+
     await transporter.sendMail({
       from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER, // ALWAYS goes to you
+      to: process.env.EMAIL_USER,
       replyTo: userEmail,
       subject: `📩 Contact Message from ${name}`,
       html: `
