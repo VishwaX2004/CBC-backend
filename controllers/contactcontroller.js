@@ -1,28 +1,32 @@
 import nodemailer from "nodemailer";
-import jwt from "jsonwebtoken";
 
 export const sendContactMessage = async (req, res) => {
   try {
-    const token = req.body.token;
-    if (!token) return res.status(401).json({ message: "Unauthorized User" });
+    // ✅ Ensure user is logged in with email
+    if (!req.user?.email) {
+      return res
+        .status(401)
+        .json({ message: "Login with email to send contact message" });
+    }
 
+    const userEmail = req.user.email; // ✅ FIX
     const { name, message } = req.body;
 
     if (!name || !message) {
       return res.status(400).json({ message: "Name and message are required" });
     }
 
+    // ✅ Gmail transporter (clean & stable)
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.APP_PASSWORD,
       },
     });
 
+    // (Optional) Verify connection
+    await transporter.verify();
 
     await transporter.sendMail({
       from: `"Crystal Beauty Clear" <${process.env.EMAIL_USER}>`,
