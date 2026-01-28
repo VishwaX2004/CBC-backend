@@ -185,3 +185,52 @@ export async function UpdateOrderStatus(req,res) {
     }
     
 }
+
+export async function CancelOrder(req, res) {
+    
+    const user = req.user;
+    const orderID = req.params.orderID;
+
+        if (user == null) {
+            return res.status(401).json({
+                message: "Unauthorized User"
+            });
+        }
+
+    try {
+        const order = await Order.findOne({ orderID });
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (order.email !== user.email) {
+            return res.status(403).json({ message: "Not your order" });
+        }
+
+        if (order.status !== "Pending") {
+            return res.status(400).json({
+                message: "Only pending orders can be cancelled"
+            });
+        }
+
+        // Restore stock
+        for (const item of order.items) {
+            await Product.updateOne(
+                { productID: item.productID },
+                { $inc: { stock: item.quantity } }
+            );
+        }
+
+        await Order.deleteOne({ orderID });
+
+        res.json({
+            message: "Order cancelled successfully"
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Failed to cancel order"
+        });
+    }
+}
