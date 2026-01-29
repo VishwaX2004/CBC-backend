@@ -19,11 +19,11 @@ productRouter.post("/", createProduct);
 // DELETE product
 productRouter.delete("/:productID", deleteProduct);
 
-// GET product by productID
-productRouter.get("/:productID", getProductId);
-
 // SEARCH products
 productRouter.get("/search", getProductsBySearch);
+
+// GET product by productID
+productRouter.get("/:productID", getProductId);
 
 // UPDATE product
 productRouter.put("/:productID", updateProduct);
